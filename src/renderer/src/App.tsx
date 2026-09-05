@@ -10,12 +10,13 @@ import {
   tokens
 } from '@fluentui/react-components'
 
+import { blueLetterBibleUrl } from '../../shared/bible/blueLetterBible'
+import type { BibleSearchResult } from '../../shared/bible/types'
 import { calculateGematria } from '../../shared/gematria/calculateGematria'
 import {
   generateHebrewCandidates,
   type PhoneticCandidate
 } from '../../shared/phonetic/generateHebrewCandidates'
-import type { BibleSearchResult } from '../../shared/bible/types'
 
 const useStyles = makeStyles({
   root: {
@@ -121,6 +122,15 @@ const useStyles = makeStyles({
     marginTop: '6px',
     overflowWrap: 'anywhere'
   },
+  referenceLink: {
+    border: 'none',
+    backgroundColor: 'transparent',
+    color: tokens.colorBrandForegroundLink,
+    cursor: 'pointer',
+    font: 'inherit',
+    padding: 0,
+    textDecorationLine: 'underline'
+  },
   error: {
     marginTop: '20px',
     padding: '12px',
@@ -133,19 +143,25 @@ const useStyles = makeStyles({
   }
 })
 
+interface VerseReference {
+  book: string
+  chapter: number
+  verse: number
+}
+
 interface WordGroup {
   hebrew: string
   source: string
   lemma?: string
   morphology?: string
-  references: string[]
+  references: VerseReference[]
 }
 
 interface PhraseGroup {
   hebrew: string
   source: string
   wordCount: number
-  references: string[]
+  references: VerseReference[]
 }
 
 export default function App() {
@@ -169,7 +185,11 @@ export default function App() {
 
     for (const match of bibleResult.wordMatches) {
       const key = `${match.hebrew}|${match.lemma ?? ''}|${match.morphology ?? ''}`
-      const reference = `${match.book} ${match.chapter}:${match.verse}`
+      const reference = {
+        book: match.book,
+        chapter: match.chapter,
+        verse: match.verse
+      }
       const existing = groups.get(key)
 
       if (existing) {
@@ -201,7 +221,11 @@ export default function App() {
 
     for (const match of bibleResult.phraseMatches) {
       const key = `${match.hebrew}|${match.wordCount}`
-      const reference = `${match.book} ${match.chapter}:${match.verse}`
+      const reference = {
+        book: match.book,
+        chapter: match.chapter,
+        verse: match.verse
+      }
       const existing = groups.get(key)
 
       if (existing) {
@@ -259,6 +283,45 @@ export default function App() {
     } finally {
       setSearching(false)
     }
+  }
+
+  async function openReference(reference: VerseReference): Promise<void> {
+    const url = blueLetterBibleUrl(
+      reference.book,
+      reference.chapter,
+      reference.verse
+    )
+
+    if (!url) {
+      setError(`No Blue Letter Bible link is configured for ${reference.book}.`)
+      return
+    }
+
+    try {
+      await window.gamatria.openExternal(url)
+    } catch (openError) {
+      setError(
+        openError instanceof Error
+          ? openError.message
+          : 'The scripture link could not be opened.'
+      )
+    }
+  }
+
+  function renderReferences(references: VerseReference[]) {
+    return references.map((reference, index) => (
+      <span key={`${reference.book}-${reference.chapter}-${reference.verse}-${index}`}>
+        {index > 0 && ', '}
+        <button
+          type="button"
+          className={styles.referenceLink}
+          onClick={() => void openReference(reference)}
+          title="Open in Blue Letter Bible"
+        >
+          {reference.book} {reference.chapter}:{reference.verse} ↗
+        </button>
+      </span>
+    ))
   }
 
   return (
@@ -365,7 +428,7 @@ export default function App() {
                     {group.lemma && <div>Lemma: {group.lemma}</div>}
                     {group.morphology && <div>Morphology: {group.morphology}</div>}
                     <div className={styles.references}>
-                      References: {group.references.join(', ')}
+                      References: {renderReferences(group.references)}
                     </div>
                   </div>
                 </details>
@@ -395,7 +458,7 @@ export default function App() {
                       <div>OSHB form: {group.source}</div>
                     )}
                     <div className={styles.references}>
-                      References: {group.references.join(', ')}
+                      References: {renderReferences(group.references)}
                     </div>
                   </div>
                 </details>
