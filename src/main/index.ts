@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'path'
 import { findWordMatches } from './bible/findWordMatches'
 import { findPhraseMatches } from './bible/findPhraseMatches'
@@ -17,6 +17,23 @@ function registerIpcHandlers(): void {
         wordMatches: findWordMatches(target),
         phraseMatches: findPhraseMatches(target)
       }
+    }
+  )
+
+  ipcMain.handle(
+    'gamatria:open-external',
+    async (_event, url: string): Promise<void> => {
+      const parsed = new URL(url)
+
+      if (
+        parsed.protocol !== 'https:' ||
+        parsed.hostname !== 'www.blueletterbible.org' ||
+        !parsed.pathname.startsWith('/amp/')
+      ) {
+        throw new Error('Only Blue Letter Bible AMP links may be opened.')
+      }
+
+      await shell.openExternal(parsed.toString())
     }
   )
 }
