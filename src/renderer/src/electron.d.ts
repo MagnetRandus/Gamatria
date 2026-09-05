@@ -5,6 +5,7 @@ declare global {
     gamatria: {
       version: string
       searchBible: (target: number) => Promise<BibleSearchResult>
+      openExternal: (url: string) => Promise<void>
     }
   }
 }
