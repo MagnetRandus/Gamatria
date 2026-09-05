@@ -27,11 +27,13 @@
     "@vitejs/plugin-react": "^4.5.2",
     "electron": "^44.2.0",
     "electron-vite": "^5.0.0",
+    "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vite": "^7.3.6"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.74.7",
+    "morphhb": "^2.0.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   }
