@@ -3,19 +3,19 @@
   "version": "1.0.0",
   "description": "",
   "main": "./out/main/index.js",
-"scripts": {
-  "dev": "electron-vite dev",
-  "build": "electron-vite build",
-  "start": "electron-vite preview",
-  "postinstall": "npx --no-install install-electron"
-},
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "postinstall": "npx --no-install install-electron"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/MagnetRandus/Gamatria.git"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MPL-2.0",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/MagnetRandus/Gamatria/issues"
