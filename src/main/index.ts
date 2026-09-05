@@ -24,13 +24,16 @@ function registerIpcHandlers(): void {
     'gamatria:open-external',
     async (_event, url: string): Promise<void> => {
       const parsed = new URL(url)
+      const allowedPath =
+        parsed.pathname.startsWith('/amp/') ||
+        parsed.pathname.startsWith('/lexicon/')
 
       if (
         parsed.protocol !== 'https:' ||
         parsed.hostname !== 'www.blueletterbible.org' ||
-        !parsed.pathname.startsWith('/amp/')
+        !allowedPath
       ) {
-        throw new Error('Only Blue Letter Bible AMP links may be opened.')
+        throw new Error('Only approved Blue Letter Bible links may be opened.')
       }
 
       await shell.openExternal(parsed.toString())
