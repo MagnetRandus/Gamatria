@@ -1,5 +1,25 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import { findWordMatches } from './bible/findWordMatches'
+import { findPhraseMatches } from './bible/findPhraseMatches'
+import type { BibleSearchResult } from '../shared/bible/types'
+
+function registerIpcHandlers(): void {
+  ipcMain.handle(
+    'gamatria:search-bible',
+    (_event, target: number): BibleSearchResult => {
+      if (!Number.isFinite(target) || target <= 0) {
+        throw new Error('Gematria target must be a positive number.')
+      }
+
+      return {
+        target,
+        wordMatches: findWordMatches(target),
+        phraseMatches: findPhraseMatches(target)
+      }
+    }
+  )
+}
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -22,6 +42,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  registerIpcHandlers()
   createWindow()
 
   app.on('activate', () => {
