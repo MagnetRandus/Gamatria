@@ -1,4 +1,8 @@
 import { calculateGematria } from '../../shared/gematria/calculateGematria'
+import type {
+  BiblePhraseMatch,
+  BiblePhraseToken
+} from '../../shared/bible/types'
 
 type MorphWord = [
   surface: string,
@@ -9,16 +13,6 @@ type MorphWord = [
 type BibleCorpus = Record<string, MorphWord[][][]>
 
 const bible = require('morphhb') as BibleCorpus
-
-export interface BiblePhraseMatch {
-  book: string
-  chapter: number
-  verse: number
-  source: string
-  hebrew: string
-  value: number
-  wordCount: number
-}
 
 function normalizeSurface(surface: string): string {
   return surface.replace(/\//g, '')
@@ -33,18 +27,23 @@ export function findPhraseMatches(
   for (const [book, chapters] of Object.entries(bible)) {
     chapters.forEach((chapter, chapterIndex) => {
       chapter.forEach((verse, verseIndex) => {
-        const words = verse
+        const words: BiblePhraseToken[] = verse
           .filter(
             (word): word is MorphWord =>
               Array.isArray(word) && typeof word[0] === 'string'
           )
-          .map((word) => ({
-            source: word[0],
-            hebrew: normalizeSurface(word[0]),
-            value: calculateGematria(
-              normalizeSurface(word[0])
-            ).total
-          }))
+          .map((word) => {
+            const [source, lemma, morphology] = word
+            const hebrew = normalizeSurface(source)
+
+            return {
+              source,
+              hebrew,
+              lemma,
+              morphology,
+              value: calculateGematria(hebrew).total
+            }
+          })
 
         for (let start = 0; start < words.length; start++) {
           let total = 0
@@ -71,7 +70,8 @@ export function findPhraseMatches(
                   .map((word) => word.hebrew)
                   .join(' '),
                 value: total,
-                wordCount
+                wordCount,
+                tokens: phrase
               })
             }
 
