@@ -1,0 +1,4 @@
+node_modules
+
+# Electron build output
+out/
