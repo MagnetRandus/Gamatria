@@ -9,6 +9,14 @@ export interface BibleWordMatch {
   value: number
 }
 
+export interface BiblePhraseToken {
+  source: string
+  hebrew: string
+  lemma?: string
+  morphology?: string
+  value: number
+}
+
 export interface BiblePhraseMatch {
   book: string
   chapter: number
@@ -17,6 +25,7 @@ export interface BiblePhraseMatch {
   hebrew: string
   value: number
   wordCount: number
+  tokens: BiblePhraseToken[]
 }
 
 export interface BibleSearchResult {
