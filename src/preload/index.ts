@@ -4,5 +4,7 @@ import type { BibleSearchResult } from '../shared/bible/types'
 contextBridge.exposeInMainWorld('gamatria', {
   version: '1.0.0',
   searchBible: (target: number): Promise<BibleSearchResult> =>
-    ipcRenderer.invoke('gamatria:search-bible', target)
+    ipcRenderer.invoke('gamatria:search-bible', target),
+  openExternal: (url: string): Promise<void> =>
+    ipcRenderer.invoke('gamatria:open-external', url)
 })
