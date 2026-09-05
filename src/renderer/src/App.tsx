@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Button,
   Field,
@@ -7,6 +8,8 @@ import {
   makeStyles,
   tokens
 } from '@fluentui/react-components'
+
+import { calculateGematria } from '../../shared/gematria/calculateGematria'
 
 const useStyles = makeStyles({
   root: {
@@ -30,11 +33,32 @@ const useStyles = makeStyles({
     padding: '24px',
     borderRadius: tokens.borderRadiusLarge,
     backgroundColor: tokens.colorNeutralBackground2
+  },
+  hebrew: {
+    fontSize: '32px',
+    direction: 'rtl'
+  },
+  total: {
+    fontSize: '28px',
+    fontWeight: 'bold'
+  },
+  breakdown: {
+    marginTop: '16px',
+    fontSize: '18px'
   }
 })
 
 export default function App() {
   const styles = useStyles()
+
+  const [text, setText] = useState('מגנוס')
+  const [result, setResult] = useState(() =>
+    calculateGematria('מגנוס')
+  )
+
+  function analyze() {
+    setResult(calculateGematria(text))
+  }
 
   return (
     <div className={styles.root}>
@@ -47,18 +71,40 @@ export default function App() {
       <div className={styles.form}>
         <Field
           className={styles.field}
-          label="Name or phrase"
+          label="Hebrew"
         >
-          <Input defaultValue="Magnus" />
+          <Input
+            value={text}
+            dir="rtl"
+            onChange={(_, data) => setText(data.value)}
+          />
         </Field>
 
-        <Button appearance="primary">
-          Analyze
+        <Button
+          appearance="primary"
+          onClick={analyze}
+        >
+          Calculate
         </Button>
       </div>
 
       <div className={styles.result}>
-        <Text>Analysis results will appear here.</Text>
+        <div className={styles.hebrew}>
+          {result.original}
+        </div>
+
+        <div className={styles.breakdown}>
+          {result.letters.map((item, index) => (
+            <span key={index}>
+              {item.letter} = {item.value}
+              {index < result.letters.length - 1 ? '  +  ' : ''}
+            </span>
+          ))}
+        </div>
+
+        <div className={styles.total}>
+          = {result.total}
+        </div>
       </div>
     </div>
   )
