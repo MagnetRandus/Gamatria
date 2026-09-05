@@ -11,6 +11,10 @@ import {
 } from '@fluentui/react-components'
 
 import { calculateGematria } from '../../shared/gematria/calculateGematria'
+import {
+  generateHebrewCandidates,
+  type PhoneticCandidate
+} from '../../shared/phonetic/generateHebrewCandidates'
 import type { BibleSearchResult } from '../../shared/bible/types'
 
 const useStyles = makeStyles({
@@ -21,6 +25,20 @@ const useStyles = makeStyles({
   },
   header: {
     marginBottom: '32px'
+  },
+  panel: {
+    padding: '20px',
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground2,
+    marginBottom: '24px'
+  },
+  panelTitle: {
+    marginTop: 0,
+    marginBottom: '6px'
+  },
+  helpText: {
+    display: 'block',
+    marginBottom: '16px'
   },
   form: {
     display: 'flex',
@@ -34,10 +52,39 @@ const useStyles = makeStyles({
   },
   actions: {
     display: 'flex',
-    gap: '8px'
+    gap: '8px',
+    flexWrap: 'wrap'
+  },
+  candidateGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '10px',
+    marginTop: '18px'
+  },
+  candidateCard: {
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusMedium,
+    backgroundColor: tokens.colorNeutralBackground1,
+    padding: '14px'
+  },
+  candidateHebrew: {
+    direction: 'rtl',
+    fontSize: '28px',
+    fontWeight: '600',
+    margin: '6px 0'
+  },
+  candidateValue: {
+    fontSize: '20px',
+    fontWeight: '600',
+    marginBottom: '10px'
+  },
+  candidateActions: {
+    display: 'flex',
+    gap: '8px',
+    flexWrap: 'wrap'
   },
   result: {
-    marginTop: '32px',
+    marginTop: '20px',
     padding: '24px',
     borderRadius: tokens.borderRadiusLarge,
     backgroundColor: tokens.colorNeutralBackground2
@@ -126,6 +173,10 @@ interface PhraseGroup {
 export default function App() {
   const styles = useStyles()
 
+  const [englishName, setEnglishName] = useState('Magnus')
+  const [candidates, setCandidates] = useState<PhoneticCandidate[]>(() =>
+    generateHebrewCandidates('Magnus')
+  )
   const [text, setText] = useState('מגנוס')
   const [result, setResult] = useState(() =>
     calculateGematria('מגנוס')
@@ -197,14 +248,30 @@ export default function App() {
     )
   }, [bibleResult])
 
-  function calculate(): void {
-    setResult(calculateGematria(text))
+  function clearSearchResults(): void {
     setBibleResult(null)
     setError(null)
   }
 
-  async function searchBible(): Promise<void> {
-    const calculated = calculateGematria(text)
+  function createCandidates(): void {
+    setCandidates(generateHebrewCandidates(englishName))
+    clearSearchResults()
+  }
+
+  function selectCandidate(candidate: PhoneticCandidate): void {
+    setText(candidate.hebrew)
+    setResult(calculateGematria(candidate.hebrew))
+    clearSearchResults()
+  }
+
+  function calculate(): void {
+    setResult(calculateGematria(text))
+    clearSearchResults()
+  }
+
+  async function searchHebrew(hebrew: string): Promise<void> {
+    const calculated = calculateGematria(hebrew)
+    setText(hebrew)
     setResult(calculated)
     setBibleResult(null)
     setError(null)
@@ -230,6 +297,10 @@ export default function App() {
     }
   }
 
+  async function searchBible(): Promise<void> {
+    await searchHebrew(text)
+  }
+
   return (
     <div className={styles.root}>
       <div className={styles.header}>
@@ -238,50 +309,104 @@ export default function App() {
         <Text>Hebrew gematria and phonetic analysis</Text>
       </div>
 
-      <div className={styles.form}>
-        <Field
-          className={styles.field}
-          label="Hebrew"
-        >
-          <Input
-            value={text}
-            dir="rtl"
-            onChange={(_, data) => setText(data.value)}
-          />
-        </Field>
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>1. English / Name</h2>
+        <Text className={styles.helpText}>
+          Generate plausible Hebrew spellings from the sound of an English name. These are phonetic candidates, not a claim that one spelling is uniquely correct.
+        </Text>
 
-        <div className={styles.actions}>
-          <Button onClick={calculate}>
-            Calculate
+        <div className={styles.form}>
+          <Field className={styles.field} label="English name or word">
+            <Input
+              value={englishName}
+              onChange={(_, data) => setEnglishName(data.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  createCandidates()
+                }
+              }}
+            />
+          </Field>
+
+          <Button appearance="primary" onClick={createCandidates}>
+            Generate Hebrew
           </Button>
-          <Button
-            appearance="primary"
-            disabled={searching}
-            onClick={searchBible}
-          >
-            Search Bible
-          </Button>
-        </div>
-      </div>
-
-      <div className={styles.result}>
-        <div className={styles.hebrew}>
-          {result.original}
         </div>
 
-        <div className={styles.breakdown}>
-          {result.letters.map((item, index) => (
-            <span key={`${item.letter}-${index}`}>
-              {item.letter} = {item.value}
-              {index < result.letters.length - 1 ? '  +  ' : ''}
-            </span>
-          ))}
+        {candidates.length > 0 && (
+          <div className={styles.candidateGrid}>
+            {candidates.map((candidate) => (
+              <div className={styles.candidateCard} key={candidate.hebrew}>
+                <Text>{candidate.label}</Text>
+                <div className={styles.candidateHebrew}>{candidate.hebrew}</div>
+                <div className={styles.candidateValue}>= {candidate.value}</div>
+
+                <div className={styles.candidateActions}>
+                  <Button onClick={() => selectCandidate(candidate)}>
+                    Use Hebrew
+                  </Button>
+                  <Button
+                    appearance="primary"
+                    disabled={searching}
+                    onClick={() => void searchHebrew(candidate.hebrew)}
+                  >
+                    Search Bible
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>2. Hebrew</h2>
+        <Text className={styles.helpText}>
+          Select a phonetic candidate above or enter/edit Hebrew directly.
+        </Text>
+
+        <div className={styles.form}>
+          <Field className={styles.field} label="Hebrew">
+            <Input
+              value={text}
+              dir="rtl"
+              onChange={(_, data) => setText(data.value)}
+            />
+          </Field>
+
+          <div className={styles.actions}>
+            <Button onClick={calculate}>
+              Calculate
+            </Button>
+            <Button
+              appearance="primary"
+              disabled={searching}
+              onClick={() => void searchBible()}
+            >
+              Search Bible
+            </Button>
+          </div>
         </div>
 
-        <div className={styles.total}>
-          = {result.total}
+        <div className={styles.result}>
+          <div className={styles.hebrew}>
+            {result.original}
+          </div>
+
+          <div className={styles.breakdown}>
+            {result.letters.map((item, index) => (
+              <span key={`${item.letter}-${index}`}>
+                {item.letter} = {item.value}
+                {index < result.letters.length - 1 ? '  +  ' : ''}
+              </span>
+            ))}
+          </div>
+
+          <div className={styles.total}>
+            = {result.total}
+          </div>
         </div>
-      </div>
+      </section>
 
       {searching && (
         <div className={styles.loading}>
