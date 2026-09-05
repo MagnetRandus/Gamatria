@@ -50,11 +50,6 @@ const useStyles = makeStyles({
     flexGrow: 1,
     minWidth: '300px'
   },
-  actions: {
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap'
-  },
   candidateGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -78,31 +73,14 @@ const useStyles = makeStyles({
     fontWeight: '600',
     marginBottom: '10px'
   },
-  candidateActions: {
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap'
-  },
-  result: {
-    marginTop: '20px',
-    padding: '24px',
-    borderRadius: tokens.borderRadiusLarge,
-    backgroundColor: tokens.colorNeutralBackground2
-  },
-  hebrew: {
-    fontSize: '32px',
-    direction: 'rtl'
-  },
-  total: {
-    fontSize: '28px',
-    fontWeight: 'bold'
-  },
-  breakdown: {
-    marginTop: '16px',
-    fontSize: '18px'
-  },
   biblePanel: {
     marginTop: '24px'
+  },
+  searchedCandidate: {
+    direction: 'rtl',
+    fontSize: '24px',
+    fontWeight: '600',
+    marginBottom: '8px'
   },
   summary: {
     display: 'flex',
@@ -177,11 +155,8 @@ export default function App() {
   const [candidates, setCandidates] = useState<PhoneticCandidate[]>(() =>
     generateHebrewCandidates('Magnus')
   )
-  const [text, setText] = useState('מגנוס')
-  const [result, setResult] = useState(() =>
-    calculateGematria('מגנוס')
-  )
   const [bibleResult, setBibleResult] = useState<BibleSearchResult | null>(null)
+  const [searchedHebrew, setSearchedHebrew] = useState<string | null>(null)
   const [searching, setSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -250,6 +225,7 @@ export default function App() {
 
   function clearSearchResults(): void {
     setBibleResult(null)
+    setSearchedHebrew(null)
     setError(null)
   }
 
@@ -258,26 +234,14 @@ export default function App() {
     clearSearchResults()
   }
 
-  function selectCandidate(candidate: PhoneticCandidate): void {
-    setText(candidate.hebrew)
-    setResult(calculateGematria(candidate.hebrew))
-    clearSearchResults()
-  }
-
-  function calculate(): void {
-    setResult(calculateGematria(text))
-    clearSearchResults()
-  }
-
   async function searchHebrew(hebrew: string): Promise<void> {
     const calculated = calculateGematria(hebrew)
-    setText(hebrew)
-    setResult(calculated)
     setBibleResult(null)
+    setSearchedHebrew(hebrew)
     setError(null)
 
     if (calculated.total <= 0) {
-      setError('Enter Hebrew letters before searching the Bible corpus.')
+      setError('No Hebrew gematria value could be calculated for this candidate.')
       return
     }
 
@@ -297,10 +261,6 @@ export default function App() {
     }
   }
 
-  async function searchBible(): Promise<void> {
-    await searchHebrew(text)
-  }
-
   return (
     <div className={styles.root}>
       <div className={styles.header}>
@@ -310,7 +270,7 @@ export default function App() {
       </div>
 
       <section className={styles.panel}>
-        <h2 className={styles.panelTitle}>1. English / Name</h2>
+        <h2 className={styles.panelTitle}>English / Name</h2>
         <Text className={styles.helpText}>
           Generate plausible Hebrew spellings from the sound of an English name. These are phonetic candidates, not a claim that one spelling is uniquely correct.
         </Text>
@@ -341,76 +301,22 @@ export default function App() {
                 <div className={styles.candidateHebrew}>{candidate.hebrew}</div>
                 <div className={styles.candidateValue}>= {candidate.value}</div>
 
-                <div className={styles.candidateActions}>
-                  <Button onClick={() => selectCandidate(candidate)}>
-                    Use Hebrew
-                  </Button>
-                  <Button
-                    appearance="primary"
-                    disabled={searching}
-                    onClick={() => void searchHebrew(candidate.hebrew)}
-                  >
-                    Search Bible
-                  </Button>
-                </div>
+                <Button
+                  appearance="primary"
+                  disabled={searching}
+                  onClick={() => void searchHebrew(candidate.hebrew)}
+                >
+                  Search Bible
+                </Button>
               </div>
             ))}
           </div>
         )}
       </section>
 
-      <section className={styles.panel}>
-        <h2 className={styles.panelTitle}>2. Hebrew</h2>
-        <Text className={styles.helpText}>
-          Select a phonetic candidate above or enter/edit Hebrew directly.
-        </Text>
-
-        <div className={styles.form}>
-          <Field className={styles.field} label="Hebrew">
-            <Input
-              value={text}
-              dir="rtl"
-              onChange={(_, data) => setText(data.value)}
-            />
-          </Field>
-
-          <div className={styles.actions}>
-            <Button onClick={calculate}>
-              Calculate
-            </Button>
-            <Button
-              appearance="primary"
-              disabled={searching}
-              onClick={() => void searchBible()}
-            >
-              Search Bible
-            </Button>
-          </div>
-        </div>
-
-        <div className={styles.result}>
-          <div className={styles.hebrew}>
-            {result.original}
-          </div>
-
-          <div className={styles.breakdown}>
-            {result.letters.map((item, index) => (
-              <span key={`${item.letter}-${index}`}>
-                {item.letter} = {item.value}
-                {index < result.letters.length - 1 ? '  +  ' : ''}
-              </span>
-            ))}
-          </div>
-
-          <div className={styles.total}>
-            = {result.total}
-          </div>
-        </div>
-      </section>
-
       {searching && (
         <div className={styles.loading}>
-          <Spinner label={`Searching the Hebrew Bible for ${result.total}...`} />
+          <Spinner label="Searching the Hebrew Bible..." />
         </div>
       )}
 
@@ -423,6 +329,10 @@ export default function App() {
       {bibleResult && (
         <div className={styles.biblePanel}>
           <h2>Bible matches for {bibleResult.target}</h2>
+
+          {searchedHebrew && (
+            <div className={styles.searchedCandidate}>{searchedHebrew}</div>
+          )}
 
           <div className={styles.summary}>
             <Text>
