@@ -11,7 +11,14 @@ import {
 } from '@fluentui/react-components'
 
 import { blueLetterBibleUrl } from '../../shared/bible/blueLetterBible'
-import type { BibleSearchResult } from '../../shared/bible/types'
+import {
+  blueLetterBibleStrongsUrl,
+  extractStrongs
+} from '../../shared/bible/strongs'
+import type {
+  BiblePhraseToken,
+  BibleSearchResult
+} from '../../shared/bible/types'
 import { calculateGematria } from '../../shared/gematria/calculateGematria'
 import {
   generateHebrewCandidates,
@@ -109,6 +116,12 @@ const useStyles = makeStyles({
     justifyContent: 'space-between',
     gap: '12px'
   },
+  matchIdentity: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    flexWrap: 'wrap'
+  },
   matchHebrew: {
     direction: 'rtl',
     fontSize: '22px',
@@ -119,7 +132,7 @@ const useStyles = makeStyles({
     lineHeight: '1.5'
   },
   references: {
-    marginTop: '6px',
+    marginTop: '10px',
     overflowWrap: 'anywhere'
   },
   referenceLink: {
@@ -130,6 +143,39 @@ const useStyles = makeStyles({
     font: 'inherit',
     padding: 0,
     textDecorationLine: 'underline'
+  },
+  strongsLink: {
+    border: `1px solid ${tokens.colorBrandStroke1}`,
+    borderRadius: tokens.borderRadiusSmall,
+    backgroundColor: tokens.colorBrandBackground2,
+    color: tokens.colorBrandForegroundLink,
+    cursor: 'pointer',
+    font: 'inherit',
+    fontSize: '13px',
+    fontWeight: '600',
+    padding: '2px 6px'
+  },
+  tokenList: {
+    display: 'grid',
+    gap: '6px',
+    marginTop: '10px',
+    marginBottom: '10px'
+  },
+  tokenRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexWrap: 'wrap'
+  },
+  tokenHebrew: {
+    direction: 'rtl',
+    fontSize: '20px',
+    fontWeight: '600',
+    minWidth: '90px'
+  },
+  noStrongs: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: '13px'
   },
   error: {
     marginTop: '20px',
@@ -154,6 +200,7 @@ interface WordGroup {
   source: string
   lemma?: string
   morphology?: string
+  strongs: string[]
   references: VerseReference[]
 }
 
@@ -161,6 +208,7 @@ interface PhraseGroup {
   hebrew: string
   source: string
   wordCount: number
+  tokens: BiblePhraseToken[]
   references: VerseReference[]
 }
 
@@ -200,6 +248,7 @@ export default function App() {
           source: match.source,
           lemma: match.lemma,
           morphology: match.morphology,
+          strongs: extractStrongs(match.lemma),
           references: [reference]
         })
       }
@@ -220,7 +269,10 @@ export default function App() {
     const groups = new Map<string, PhraseGroup>()
 
     for (const match of bibleResult.phraseMatches) {
-      const key = `${match.hebrew}|${match.wordCount}`
+      const lexicalKey = match.tokens
+        .map((token) => `${token.hebrew}:${token.lemma ?? ''}`)
+        .join('|')
+      const key = `${match.hebrew}|${match.wordCount}|${lexicalKey}`
       const reference = {
         book: match.book,
         chapter: match.chapter,
@@ -235,6 +287,7 @@ export default function App() {
           hebrew: match.hebrew,
           source: match.source,
           wordCount: match.wordCount,
+          tokens: match.tokens,
           references: [reference]
         })
       }
@@ -308,6 +361,25 @@ export default function App() {
     }
   }
 
+  async function openStrongs(strongs: string): Promise<void> {
+    const url = blueLetterBibleStrongsUrl(strongs)
+
+    if (!url) {
+      setError(`No Strong's link could be generated for ${strongs}.`)
+      return
+    }
+
+    try {
+      await window.gamatria.openExternal(url)
+    } catch (openError) {
+      setError(
+        openError instanceof Error
+          ? openError.message
+          : `Strong's ${strongs} could not be opened.`
+      )
+    }
+  }
+
   function renderReferences(references: VerseReference[]) {
     return references.map((reference, index) => (
       <span key={`${reference.book}-${reference.chapter}-${reference.verse}-${index}`}>
@@ -322,6 +394,29 @@ export default function App() {
         </button>
       </span>
     ))
+  }
+
+  function renderStrongsButton(
+    strongs: string,
+    preventSummaryToggle = false
+  ) {
+    return (
+      <button
+        type="button"
+        className={styles.strongsLink}
+        key={strongs}
+        onClick={(event) => {
+          if (preventSummaryToggle) {
+            event.preventDefault()
+            event.stopPropagation()
+          }
+          void openStrongs(strongs)
+        }}
+        title={`Open Strong's ${strongs} in Blue Letter Bible`}
+      >
+        Strong's {strongs} ↗
+      </button>
+    )
   }
 
   return (
@@ -417,7 +512,12 @@ export default function App() {
                   key={`${group.hebrew}-${group.lemma ?? ''}-${group.morphology ?? ''}`}
                 >
                   <summary className={styles.matchSummary}>
-                    <span className={styles.matchHebrew}>{group.hebrew}</span>
+                    <span className={styles.matchIdentity}>
+                      <span className={styles.matchHebrew}>{group.hebrew}</span>
+                      {group.strongs.map((strongs) =>
+                        renderStrongsButton(strongs, true)
+                      )}
+                    </span>
                     <span>{group.references.length} occurrence{group.references.length === 1 ? '' : 's'}</span>
                   </summary>
 
@@ -425,7 +525,7 @@ export default function App() {
                     {group.source !== group.hebrew && (
                       <div>OSHB form: {group.source}</div>
                     )}
-                    {group.lemma && <div>Lemma: {group.lemma}</div>}
+                    {group.lemma && <div>OSHB lemma: {group.lemma}</div>}
                     {group.morphology && <div>Morphology: {group.morphology}</div>}
                     <div className={styles.references}>
                       References: {renderReferences(group.references)}
@@ -444,7 +544,7 @@ export default function App() {
               {phraseGroups.map((group) => (
                 <details
                   className={styles.matchCard}
-                  key={`${group.hebrew}-${group.wordCount}`}
+                  key={`${group.hebrew}-${group.wordCount}-${group.tokens.map((token) => token.lemma ?? '').join('-')}`}
                 >
                   <summary className={styles.matchSummary}>
                     <span className={styles.matchHebrew}>{group.hebrew}</span>
@@ -457,6 +557,31 @@ export default function App() {
                     {group.source !== group.hebrew && (
                       <div>OSHB form: {group.source}</div>
                     )}
+
+                    <div className={styles.tokenList}>
+                      {group.tokens.map((token, index) => {
+                        const strongsNumbers = extractStrongs(token.lemma)
+
+                        return (
+                          <div
+                            className={styles.tokenRow}
+                            key={`${token.hebrew}-${token.lemma ?? ''}-${index}`}
+                          >
+                            <span className={styles.tokenHebrew}>{token.hebrew}</span>
+                            {strongsNumbers.length > 0 ? (
+                              strongsNumbers.map((strongs) =>
+                                renderStrongsButton(strongs)
+                              )
+                            ) : (
+                              <span className={styles.noStrongs}>
+                                No Strong's reference
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+
                     <div className={styles.references}>
                       References: {renderReferences(group.references)}
                     </div>
